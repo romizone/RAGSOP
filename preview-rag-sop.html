@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG SOP Perusahaan - Preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    background: #f0f4f8;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  /* HEADER */
+  .app-header {
+    background: linear-gradient(135deg, #0c2d48 0%, #0a4d68 40%, #0e7a6d 100%);
+    border-radius: 20px;
+    padding: 40px 36px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(12, 45, 72, 0.3);
+    animation: fadeDown 0.6s ease;
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .app-header::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -20%;
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(14,122,109,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .app-header::after {
+    content: '';
+    position: absolute;
+    bottom: -30%;
+    left: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+
+  .header-content { position: relative; z-index: 1; }
+
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.12);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    padding: 6px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #a7f3d0;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    animation: fadeIn 0.8s ease 0.2s both;
+  }
+
+  .badge-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #34d399;
+    box-shadow: 0 0 8px rgba(52,211,153,0.6);
+    animation: pulse 2s ease infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(52,211,153,0.6); }
+    50% { box-shadow: 0 0 16px rgba(52,211,153,0.9); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .header-title {
+    font-size: 34px;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 8px;
+    letter-spacing: -0.5px;
+    animation: fadeIn 0.8s ease 0.3s both;
+  }
+
+  .header-subtitle {
+    font-size: 15px;
+    color: rgba(255,255,255,0.65);
+    font-weight: 400;
+    max-width: 500px;
+    line-height: 1.5;
+    animation: fadeIn 0.8s ease 0.4s both;
+  }
+
+  .header-chips {
+    display: flex;
+    gap: 16px;
+    margin-top: 20px;
+    animation: fadeIn 0.8s ease 0.5s both;
+  }
+
+  .header-chip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: rgba(255,255,255,0.55);
+    font-size: 13px;
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    animation: fadeIn 0.6s ease 0.4s both;
+  }
+
+  .tab {
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 14px;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .tab:hover {
+    background: #e2e8f0;
+    color: #334155;
+  }
+
+  .tab.active {
+    background: white;
+    color: #0c4a6e;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+
+  /* CHAT AREA */
+  .chat-container {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    overflow: hidden;
+    animation: slideUp 0.5s ease 0.5s both;
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .chat-messages {
+    padding: 24px;
+    height: 380px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .msg {
+    display: flex;
+    gap: 12px;
+    max-width: 85%;
+    animation: msgIn 0.3s ease;
+  }
+
+  @keyframes msgIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user {
+    align-self: flex-end;
+    flex-direction: row-reverse;
+  }
+
+  .msg-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .msg.user .msg-avatar {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .msg.bot .msg-avatar {
+    background: linear-gradient(135deg, #0e7a6d, #10b981);
+  }
+
+  .msg-bubble {
+    padding: 14px 18px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.65;
+    color: #334155;
+  }
+
+  .msg.user .msg-bubble {
+    background: linear-gradient(135deg, #6366f1, #818cf8);
+    color: white;
+    border-bottom-right-radius: 4px;
+  }
+
+  .msg.bot .msg-bubble {
+    background: #f1f5f9;
+    border-bottom-left-radius: 4px;
+  }
+
+  .msg-source {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 12px;
+    color: #94a3b8;
+  }
+
+  .msg-source span {
+    background: #e2e8f0;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    margin-left: 4px;
+    color: #475569;
+    font-weight: 500;
+  }
+
+  /* INPUT */
+  .input-container {
+    display: flex;
+    gap: 8px;
+    padding: 16px;
+    border-top: 1px solid #f1f5f9;
+    background: #fafbfc;
+  }
+
+  .input-box {
+    flex: 1;
+    padding: 14px 18px;
+    border: 2px solid #e2e8f0;
+    border-radius: 14px;
+    font-size: 14px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    outline: none;
+    transition: all 0.2s ease;
+    background: white;
+    color: #334155;
+  }
+
+  .input-box:focus {
+    border-color: #0e7a6d;
+    box-shadow: 0 0 0 3px rgba(14,122,109,0.1);
+  }
+
+  .input-box::placeholder { color: #94a3b8; }
+
+  .send-btn {
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #0c4a6e, #0e7a6d);
+    color: white;
+    border: none;
+    border-radius: 14px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 12px rgba(14,122,109,0.3);
+    white-space: nowrap;
+  }
+
+  .send-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 20px rgba(14,122,109,0.4);
+  }
+
+  .send-btn:active {
+    transform: translateY(0);
+  }
+
+  /* EXAMPLES */
+  .examples {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    animation: fadeIn 0.6s ease 0.7s both;
+  }
+
+  .example-chip {
+    padding: 8px 16px;
+    background: white;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .example-chip:hover {
+    border-color: #0e7a6d;
+    color: #0e7a6d;
+    background: #f0fdf4;
+    transform: translateY(-1px);
+  }
+
+  .hint {
+    color: #94a3b8;
+    font-size: 12px;
+    margin-top: 12px;
+    animation: fadeIn 0.6s ease 0.65s both;
+  }
+
+  /* PIPELINE CARDS */
+  .pipeline {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 12px;
+    margin-top: 20px;
+    animation: slideUp 0.5s ease 0.6s both;
+  }
+
+  .pipeline-card {
+    background: white;
+    border-radius: 14px;
+    padding: 20px 16px;
+    text-align: center;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+    position: relative;
+  }
+
+  .pipeline-card:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #cbd5e1;
+    font-size: 18px;
+    font-weight: 700;
+  }
+
+  .pipeline-card:hover {
+    border-color: #0e7a6d;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+
+  .pipeline-icon { font-size: 28px; margin-bottom: 10px; }
+  .pipeline-title { font-size: 13px; font-weight: 700; color: #334155; }
+  .pipeline-desc { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+
+  /* STATS */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 20px;
+    animation: slideUp 0.5s ease 0.5s both;
+  }
+
+  .stat-card {
+    border-radius: 16px;
+    padding: 28px;
+    color: white;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    transition: transform 0.2s ease;
+  }
+
+  .stat-card:hover { transform: translateY(-2px); }
+
+  .stat-card.purple {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    box-shadow: 0 4px 20px rgba(99,102,241,0.35);
+  }
+
+  .stat-card.teal {
+    background: linear-gradient(135deg, #0e7a6d, #10b981);
+    box-shadow: 0 4px 20px rgba(14,122,109,0.35);
+  }
+
+  .stat-number { font-size: 40px; font-weight: 800; }
+  .stat-label { font-size: 14px; opacity: 0.85; margin-top: 4px; }
+
+  /* DOC LIST */
+  .doc-list {
+    margin-top: 20px;
+    animation: slideUp 0.5s ease 0.6s both;
+  }
+
+  .doc-list h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 12px;
+  }
+
+  .doc-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    background: #f8fafc;
+    border-radius: 10px;
+    margin-bottom: 6px;
+    border: 1px solid #e2e8f0;
+    font-size: 13px;
+    color: #334155;
+    transition: all 0.15s ease;
+  }
+
+  .doc-item:hover {
+    background: #f0fdf4;
+    border-color: #0e7a6d;
+  }
+
+  .doc-icon { color: #6366f1; }
+
+  /* FOOTER */
+  .footer {
+    text-align: center;
+    padding: 24px;
+    color: #94a3b8;
+    font-size: 12px;
+    animation: fadeIn 0.6s ease 0.8s both;
+  }
+
+  .footer strong { color: #64748b; }
+
+  /* TAB CONTENT */
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- HEADER -->
+  <div class="app-header">
+    <div class="header-content">
+      <div class="header-badge">
+        <div class="badge-dot"></div>
+        AI-Powered
+      </div>
+      <h1 class="header-title">📋 SOP Assistant</h1>
+      <p class="header-subtitle">
+        Tanya jawab cerdas berbasis AI untuk dokumen Standard Operating Procedure perusahaan Anda
+      </p>
+      <div class="header-chips">
+        <div class="header-chip">🧠 Multilingual E5 Embedding</div>
+        <div class="header-chip">⚡ DeepSeek LLM</div>
+        <div class="header-chip">💾 ChromaDB Vector Store</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('chat')">💬 Tanya Jawab</button>
+    <button class="tab" onclick="switchTab('upload')">📤 Upload Dokumen</button>
+    <button class="tab" onclick="switchTab('database')">📊 Database</button>
+  </div>
+
+  <!-- TAB 1: CHAT -->
+  <div id="tab-chat" class="tab-content active">
+    <div class="chat-container">
+      <div class="chat-messages">
+        <div class="msg user">
+          <div class="msg-avatar">R</div>
+          <div class="msg-bubble">Bagaimana prosedur pengajuan cuti karyawan?</div>
+        </div>
+        <div class="msg bot">
+          <div class="msg-avatar">🤖</div>
+          <div class="msg-bubble">
+            Berdasarkan dokumen SOP yang tersedia, prosedur pengajuan cuti karyawan adalah sebagai berikut:
+            <br><br>
+            <strong>1. Pengajuan</strong> — Karyawan mengisi formulir cuti minimal 3 hari kerja sebelum tanggal cuti yang diinginkan.
+            <br><br>
+            <strong>2. Persetujuan Atasan</strong> — Formulir diserahkan ke atasan langsung untuk mendapat persetujuan.
+            <br><br>
+            <strong>3. Verifikasi HRD</strong> — HRD memverifikasi sisa jatah cuti dan kelengkapan dokumen.
+            <br><br>
+            <strong>4. Konfirmasi</strong> — Karyawan menerima notifikasi persetujuan atau penolakan cuti.
+            <div class="msg-source">
+              🔍 Sumber: <span>SOP-HR-Cuti-2023.pdf</span> <span>SOP-Kepegawaian.docx</span>
+            </div>
+          </div>
+        </div>
+        <div class="msg user">
+          <div class="msg-avatar">R</div>
+          <div class="msg-bubble">Siapa yang bertanggung jawab untuk approval purchasing di atas 50 juta?</div>
+        </div>
+        <div class="msg bot">
+          <div class="msg-avatar">🤖</div>
+          <div class="msg-bubble">
+            Untuk pembelian di atas Rp 50.000.000, approval harus melalui <strong>Direktur Keuangan</strong> sesuai SOP Purchasing. Alur lengkapnya: Dept Head → Finance Manager → Direktur Keuangan. Dokumen pendukung yang diperlukan meliputi Purchase Request, perbandingan harga dari minimal 3 vendor, dan justifikasi pembelian.
+            <div class="msg-source">
+              🔍 Sumber: <span>SOP-Purchasing-v2.pdf</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="input-container">
+        <input class="input-box" type="text" placeholder="Ketik pertanyaan tentang SOP perusahaan..." />
+        <button class="send-btn">Kirim ➤</button>
+      </div>
+    </div>
+
+    <p class="hint">💡 Tekan Enter untuk mengirim · Contoh pertanyaan di bawah</p>
+
+    <div class="examples">
+      <button class="example-chip">Bagaimana prosedur pengajuan cuti?</button>
+      <button class="example-chip">Langkah proses quality control?</button>
+      <button class="example-chip">SOP penanganan komplain customer</button>
+      <button class="example-chip">Prosedur purchasing barang</button>
+      <button class="example-chip">Aturan keamanan area gudang</button>
+    </div>
+  </div>
+
+  <!-- TAB 2: UPLOAD -->
+  <div id="tab-upload" class="tab-content">
+    <div style="margin-bottom: 20px;">
+      <h2 style="color: #1e293b; font-weight: 700; font-size: 22px;">📤 Upload Dokumen SOP</h2>
+      <p style="color: #64748b; font-size: 14px; margin-top: 8px;">
+        Upload file PDF, Word (.docx), atau TXT. Sistem akan otomatis memproses dan menyimpannya ke vector database.
+      </p>
+    </div>
+
+    <div class="pipeline">
+      <div class="pipeline-card">
+        <div class="pipeline-icon">📄</div>
+        <div class="pipeline-title">1. Upload</div>
+        <div class="pipeline-desc">PDF, DOCX, TXT</div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-icon">✂️</div>
+        <div class="pipeline-title">2. Chunking</div>
+        <div class="pipeline-desc">Pecah teks</div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-icon">🧠</div>
+        <div class="pipeline-title">3. Embedding</div>
+        <div class="pipeline-desc">Vektor AI</div>
+      </div>
+      <div class="pipeline-card">
+        <div class="pipeline-icon">💾</div>
+        <div class="pipeline-title">4. Simpan</div>
+        <div class="pipeline-desc">ChromaDB</div>
+      </div>
+    </div>
+
+    <!-- Upload success preview -->
+    <div style="margin-top: 24px; background: linear-gradient(135deg, #0c4a6e11, #0e7a6d11); border-radius: 16px; padding: 24px; border: 1px solid #0e7a6d22;">
+      <h3 style="color: #0e7a6d; margin-bottom: 16px;">✅ Upload Berhasil!</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+        <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size: 28px; font-weight: 700; color: #0c4a6e;">47</div>
+          <div style="font-size: 13px; color: #64748b;">File Diproses</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size: 28px; font-weight: 700; color: #0e7a6d;">1,842</div>
+          <div style="font-size: 13px; color: #64748b;">Chunks Dibuat</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size: 28px; font-weight: 700; color: #6366f1;">1,842</div>
+          <div style="font-size: 13px; color: #64748b;">Total di Database</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: DATABASE -->
+  <div id="tab-database" class="tab-content">
+    <div style="margin-bottom: 20px;">
+      <h2 style="color: #1e293b; font-weight: 700; font-size: 22px;">📊 Kelola Database</h2>
+      <p style="color: #64748b; font-size: 14px; margin-top: 8px;">
+        Lihat statistik dan kelola dokumen yang tersimpan di vector database.
+      </p>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card purple">
+        <div class="stat-number">1,842</div>
+        <div class="stat-label">Total Chunks</div>
+      </div>
+      <div class="stat-card teal">
+        <div class="stat-number">47</div>
+        <div class="stat-label">Dokumen Tersimpan</div>
+      </div>
+    </div>
+
+    <div class="doc-list">
+      <h3>📚 Daftar Dokumen</h3>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-Business-Development.pdf</div>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-Customer-Service.docx</div>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-IT-Information-Technology.pdf</div>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-Keuangan-Akuntansi.pdf</div>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-Legal-Compliance.docx</div>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-Marketing.pdf</div>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-Purchasing.pdf</div>
+      <div class="doc-item"><span class="doc-icon">📄</span> SOP-Quality-Control.docx</div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    Built with ❤️ using <strong>ChromaDB</strong> · <strong>DeepSeek</strong> · <strong>Multilingual E5</strong> · <strong>Gradio</strong>
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  
+  event.target.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+</script>
+</body>
+</html>

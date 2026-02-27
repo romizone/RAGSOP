@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# ChromaDB local data
+chroma_db/
+
+# macOS
+.DS_Store
+
+# Environment
+.env
+*.env
+
+# IDE
+.vscode/
+.idea/
+
+# Misc
+*.log
