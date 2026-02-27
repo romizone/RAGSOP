@@ -18,25 +18,31 @@ import time
 # ============================================
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 COLLECTION_NAME = "sop_perusahaan"
-EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
+EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
 TOP_K = 5
 
 # ============================================
-# INITIALIZE COMPONENTS
+# INITIALIZE COMPONENTS (lazy loading)
 # ============================================
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 
-ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-    model_name=EMBEDDING_MODEL
-)
+ef = None
+collection = None
 
-collection = chroma_client.get_or_create_collection(
-    name=COLLECTION_NAME,
-    embedding_function=ef,
-    metadata={"hnsw:space": "cosine"}
-)
+def get_collection():
+    global ef, collection
+    if collection is None:
+        ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+            model_name=EMBEDDING_MODEL
+        )
+        collection = chroma_client.get_or_create_collection(
+            name=COLLECTION_NAME,
+            embedding_function=ef,
+            metadata={"hnsw:space": "cosine"}
+        )
+    return collection
 
 deepseek_client = OpenAI(
     api_key=DEEPSEEK_API_KEY,
@@ -134,7 +140,7 @@ def process_and_store(files, progress=gr.Progress()):
         batch_size = 100
         for batch_start in range(0, len(chunks), batch_size):
             batch_end = min(batch_start + batch_size, len(chunks))
-            collection.upsert(
+            get_collection().upsert(
                 ids=ids[batch_start:batch_end],
                 documents=chunks[batch_start:batch_end],
                 metadatas=metadatas[batch_start:batch_end]
@@ -156,7 +162,7 @@ def process_and_store(files, progress=gr.Progress()):
             <div style="font-size: 13px; color: #64748b;">Chunks Dibuat</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-            <div style="font-size: 28px; font-weight: 700; color: #6366f1;">{collection.count()}</div>
+            <div style="font-size: 28px; font-weight: 700; color: #6366f1;">{get_collection().count()}</div>
             <div style="font-size: 13px; color: #64748b;">Total di Database</div>
         </div>
     </div>
@@ -176,7 +182,7 @@ def query_rag(question, chat_history):
     if not question.strip():
         return chat_history, ""
 
-    if collection.count() == 0:
+    if get_collection().count() == 0:
         chat_history.append({
             "role": "user",
             "content": question
@@ -199,7 +205,7 @@ def query_rag(question, chat_history):
         return chat_history, ""
 
     # Retrieve relevant chunks
-    results = collection.query(
+    results = get_collection().query(
         query_texts=[question],
         n_results=TOP_K
     )
@@ -255,7 +261,7 @@ Jawab berdasarkan konteks di atas:"""
 
 
 def get_db_stats():
-    count = collection.count()
+    count = get_collection().count()
     if count == 0:
         return """
 <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
@@ -265,7 +271,7 @@ def get_db_stats():
 </div>
 """
 
-    all_data = collection.get(include=["metadatas"])
+    all_data = get_collection().get(include=["metadatas"])
     sources = set()
     for meta in all_data["metadatas"]:
         sources.add(meta.get("source", "unknown"))
@@ -297,13 +303,10 @@ def get_db_stats():
 
 
 def clear_database():
-    global collection
+    global collection, ef
     chroma_client.delete_collection(COLLECTION_NAME)
-    collection = chroma_client.get_or_create_collection(
-        name=COLLECTION_NAME,
-        embedding_function=ef,
-        metadata={"hnsw:space": "cosine"}
-    )
+    collection = None
+    ef = None
     return """
 <div style="text-align: center; padding: 40px; background: #fef2f2; border-radius: 16px; border: 1px solid #fecaca;">
     <div style="font-size: 36px; margin-bottom: 12px;">🗑️</div>
