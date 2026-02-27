@@ -18,7 +18,7 @@ import time
 # ============================================
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
 COLLECTION_NAME = "sop_perusahaan"
-EMBEDDING_MODEL = "intfloat/multilingual-e5-large"
+EMBEDDING_MODEL = "intfloat/multilingual-e5-base"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
 TOP_K = 5
