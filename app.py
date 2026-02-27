@@ -809,4 +809,4 @@ with gr.Blocks(
     """)
 
 # Launch
-demo.launch()
+demo.launch(ssr_mode=False)
