@@ -30,9 +30,10 @@ chroma_client = chromadb.PersistentClient(path="./chroma_db")
 
 ef = None
 collection = None
+_model_loaded = False
 
 def get_collection():
-    global ef, collection
+    global ef, collection, _model_loaded
     if collection is None:
         ef = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name=EMBEDDING_MODEL
@@ -42,7 +43,19 @@ def get_collection():
             embedding_function=ef,
             metadata={"hnsw:space": "cosine"}
         )
+        _model_loaded = True
     return collection
+
+def preload_model():
+    """Preload embedding model in background thread at startup."""
+    import threading
+    def _load():
+        get_collection()
+        print(f"✅ Embedding model '{EMBEDDING_MODEL}' loaded successfully.")
+    t = threading.Thread(target=_load, daemon=True)
+    t.start()
+
+preload_model()
 
 deepseek_client = OpenAI(
     api_key=DEEPSEEK_API_KEY,
@@ -105,6 +118,10 @@ def process_and_store(files, progress=gr.Progress()):
     processed_files = 0
     skipped_files = []
 
+    if not _model_loaded:
+        progress(0, desc="⏳ Loading embedding model (first time)...")
+        get_collection()
+
     progress(0, desc="Memulai proses...")
 
     for i, file in enumerate(files):
@@ -112,7 +129,7 @@ def process_and_store(files, progress=gr.Progress()):
         filename = Path(file_path).name
         suffix = Path(file_path).suffix.lower()
 
-        progress((i + 1) / len(files), desc=f"📄 {filename}")
+        progress((i) / len(files), desc=f"📄 Membaca {filename}...")
 
         if suffix == ".pdf":
             text = extract_text_from_pdf(file_path)
@@ -137,7 +154,9 @@ def process_and_store(files, progress=gr.Progress()):
         ids = [generate_chunk_id(filename, j) for j in range(len(chunks))]
         metadatas = [{"source": filename, "chunk_index": j} for j in range(len(chunks))]
 
-        batch_size = 100
+        progress((i + 0.5) / len(files), desc=f"🧠 Embedding {filename} ({len(chunks)} chunks)...")
+
+        batch_size = 50
         for batch_start in range(0, len(chunks), batch_size):
             batch_end = min(batch_start + batch_size, len(chunks))
             get_collection().upsert(
