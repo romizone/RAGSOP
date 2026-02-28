@@ -34,29 +34,62 @@ pinned: true
 
 ## 🎯 About
 
-**RAG SOP Assistant** is an enterprise-ready solution that combines **Retrieval-Augmented Generation (RAG)** with a **Large Language Model (LLM)** to turn corporate SOP documents into an easily accessible knowledge base.
+**RAG SOP Assistant** is an enterprise-ready, AI-powered knowledge management system designed to revolutionize how organizations interact with their Standard Operating Procedure (SOP) documents.
+
+Built on top of the **Retrieval-Augmented Generation (RAG)** architecture, this system transforms static, hard-to-navigate SOP files into a dynamic, conversational knowledge base. Employees can simply type a question in natural language — just like chatting with a colleague — and receive accurate, context-aware answers sourced directly from official company documents.
+
+Under the hood, the system leverages **multilingual sentence embeddings** to understand the semantic meaning behind every question, performs **vector similarity search** across all indexed documents using ChromaDB, and then passes the most relevant context to **DeepSeek V3 LLM** to generate a clear, well-structured answer in Indonesian.
+
+### 🧩 Core Concepts
+
+> **What is RAG?** Retrieval-Augmented Generation is an AI pattern that enhances LLM responses by first retrieving relevant information from a knowledge base, then using that context to generate grounded, factual answers — eliminating hallucination and ensuring accuracy.
+
+```
+┌──────────┐     ┌───────────┐     ┌──────────┐     ┌──────────┐
+│ 📝 Query │ ──▶ │ 🔍 Search │ ──▶ │ 📄 Docs  │ ──▶ │ 🧠 LLM   │
+│          │     │ (Vectors) │     │ (Context)│     │ (Answer) │
+└──────────┘     └───────────┘     └──────────┘     └──────────┘
+```
 
 ### 💡 Why This Matters
 
+Every organization maintains dozens — sometimes hundreds — of SOP documents covering everything from employee onboarding to emergency protocols. These documents are critical for compliance, consistency, and operational excellence. Yet in practice, they often collect dust in shared drives, rarely read, and hard to search.
+
+**RAG SOP Assistant** solves this by making SOPs instantly accessible through conversation:
+
 | Problem | Solution |
 |---------|----------|
-| 📚 SOP documents are scattered and hard to find | 🔍 AI-powered semantic search |
-| ⏰ New employees need a long time to learn procedures | 💬 Natural language Q&A like chatting |
-| 🔄 Information is spread across many files | 📊 Centralized database with vector search |
-| 📞 HR/Admin repeatedly answering the same questions | 🤖 AI assistant available 24/7 |
+| 📚 SOP documents are scattered across drives and hard to find | 🔍 AI-powered semantic search across all documents at once |
+| ⏰ New employees spend weeks learning procedures manually | 💬 Instant answers through natural language Q&A |
+| 🔄 Critical information is buried deep inside long documents | 📊 Intelligent chunking & retrieval surfaces the right section |
+| 📞 HR/Admin teams waste hours answering repetitive questions | 🤖 AI assistant handles FAQs 24/7 with zero fatigue |
+| 🔎 Keyword search fails when you don't know the exact term | 🧠 Semantic understanding matches meaning, not just words |
+| 📋 Compliance audits require quick access to procedures | ⚡ Instant lookup with source document references |
+
+### 🏢 Use Cases
+
+- **🧑‍💼 HR & People Ops** — Employee onboarding, leave policies, benefits, disciplinary procedures
+- **🏭 Operations** — Warehouse safety, equipment handling, quality control processes
+- **💰 Finance & Procurement** — Purchase approval workflows, expense policies, vendor management
+- **🛡️ Compliance** — Regulatory procedures, audit checklists, emergency response protocols
+- **🎓 Training** — Quick reference for trainees, refresher on procedures, knowledge assessment
 
 ### ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
-| 💬 **AI Chat** | Natural language Q&A about company SOPs |
-| 📤 **Multi-Format Upload** | Supports PDF, Word (.docx), and TXT |
-| 🧠 **Semantic Search** | Meaning-based retrieval, not just keyword matching |
-| 📊 **Database Management** | View stats, document list, and clear database |
-| 🔒 **Thread-Safe** | Safe for concurrent access |
-| 🛡️ **XSS Protected** | All inputs & outputs are sanitized |
-| 📄 **Auto-Index** | Default SOP documents are automatically indexed at startup |
-| 🎨 **Premium UI** | Modern interface with custom CSS design |
+| 💬 **AI Chat** | Natural language Q&A — ask anything about your company SOPs |
+| 📤 **Multi-Format Upload** | Supports PDF, Word (.docx), and plain TXT documents |
+| 🧠 **Semantic Search** | Meaning-based retrieval powered by multilingual embeddings |
+| ✂️ **Smart Chunking** | Sentence-boundary aware splitting — never cuts mid-word |
+| 📊 **Database Management** | Real-time stats, document list, and one-click database clear |
+| 📄 **Auto-Index on Startup** | Default SOP documents are automatically indexed when the app starts |
+| 🔒 **Thread-Safe** | Lock-based concurrency control for safe multi-user access |
+| 🛡️ **XSS Protected** | All user inputs & filenames are HTML-escaped |
+| 🚫 **Error Sanitization** | Sensitive information (API keys) never leaks in error messages |
+| 📏 **Input Validation** | Questions capped at 1000 chars, file uploads capped at 50MB |
+| 🎨 **Premium UI** | Polished interface with custom CSS, gradient headers, and animations |
+| 🔍 **Source Attribution** | Every answer includes references to the source SOP document |
 
 ---
 
