@@ -1,6 +1,6 @@
 """
-RAG SOP Perusahaan - Premium UI
-Deploy di Hugging Face Spaces
+RAG SOP Assistant - Premium UI
+Deployed on Hugging Face Spaces
 Stack: ChromaDB + Sentence Transformers + DeepSeek API + Gradio
 """
 
@@ -19,7 +19,7 @@ import threading
 # CONFIGURATION
 # ============================================
 DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-COLLECTION_NAME = "sop_perusahaan"
+COLLECTION_NAME = "sop_documents"
 EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
@@ -206,7 +206,7 @@ deepseek_client = OpenAI(
 
 def process_and_store(files, progress=gr.Progress()):
     if not files:
-        return "❌ Tidak ada file yang diupload.", None
+        return "❌ No files uploaded.", None
 
     total_chunks = 0
     processed_files = 0
@@ -217,7 +217,7 @@ def process_and_store(files, progress=gr.Progress()):
         get_collection()
 
     col = get_collection()
-    progress(0, desc="Memulai proses...")
+    progress(0, desc="Starting process...")
 
     for i, file in enumerate(files):
         file_path = file.name if hasattr(file, 'name') else str(file)
@@ -234,7 +234,7 @@ def process_and_store(files, progress=gr.Progress()):
             skipped_files.append(safe_name)
             continue
 
-        progress(i / max(len(files), 1), desc=f"📄 Membaca {safe_name}...")
+        progress(i / max(len(files), 1), desc=f"📄 Reading {safe_name}...")
 
         text = extract_text(file_path)
         if not text:
@@ -265,25 +265,25 @@ def process_and_store(files, progress=gr.Progress()):
 
     result = f"""
 <div style="background: linear-gradient(135deg, #0c4a6e22, #0e7a6d22); border-radius: 16px; padding: 24px; border: 1px solid #0e7a6d33;">
-    <h3 style="margin:0 0 16px 0; color: #0e7a6d;">✅ Upload Berhasil!</h3>
+    <h3 style="margin:0 0 16px 0; color: #0e7a6d;">✅ Upload Successful!</h3>
     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
         <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
             <div style="font-size: 28px; font-weight: 700; color: #0c4a6e;">{processed_files}</div>
-            <div style="font-size: 13px; color: #64748b;">File Diproses</div>
+            <div style="font-size: 13px; color: #64748b;">Files Processed</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
             <div style="font-size: 28px; font-weight: 700; color: #0e7a6d;">{total_chunks}</div>
-            <div style="font-size: 13px; color: #64748b;">Chunks Dibuat</div>
+            <div style="font-size: 13px; color: #64748b;">Chunks Created</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
             <div style="font-size: 28px; font-weight: 700; color: #6366f1;">{col.count()}</div>
-            <div style="font-size: 13px; color: #64748b;">Total di Database</div>
+            <div style="font-size: 13px; color: #64748b;">Total in Database</div>
         </div>
     </div>
 </div>
 """
     if skipped_files:
-        result += f'\n<p style="color: #f59e0b; font-size: 13px; margin-top: 12px;">⚠️ Dilewati: {", ".join(skipped_files[:10])}</p>'
+        result += f'\n<p style="color: #f59e0b; font-size: 13px; margin-top: 12px;">⚠️ Skipped: {", ".join(skipped_files[:10])}</p>'
 
     return result, None
 
@@ -302,14 +302,14 @@ def query_rag(question, chat_history):
         col = get_collection()
     except Exception:
         chat_history.append({"role": "user", "content": question})
-        chat_history.append({"role": "assistant", "content": "❌ Gagal mengakses database. Coba refresh halaman."})
+        chat_history.append({"role": "assistant", "content": "❌ Failed to access database. Try refreshing the page."})
         return chat_history, ""
 
     if col.count() == 0:
         chat_history.append({"role": "user", "content": question})
         chat_history.append({
             "role": "assistant",
-            "content": "⚠️ Database masih kosong. Silakan upload dokumen SOP terlebih dahulu di tab **📤 Upload Dokumen**."
+            "content": "⚠️ Database is empty. Please upload SOP documents first in the **📤 Upload Documents** tab."
         })
         return chat_history, ""
 
@@ -317,7 +317,7 @@ def query_rag(question, chat_history):
         chat_history.append({"role": "user", "content": question})
         chat_history.append({
             "role": "assistant",
-            "content": "⚠️ DeepSeek API key belum diset. Tambahkan `DEEPSEEK_API_KEY` di Settings → Secrets pada HF Space."
+            "content": "⚠️ DeepSeek API key is not set. Add `DEEPSEEK_API_KEY` in Settings → Secrets on HF Space."
         })
         return chat_history, ""
 
@@ -328,35 +328,35 @@ def query_rag(question, chat_history):
         )
     except Exception:
         chat_history.append({"role": "user", "content": question})
-        chat_history.append({"role": "assistant", "content": "❌ Gagal mencari di database. Coba lagi."})
+        chat_history.append({"role": "assistant", "content": "❌ Failed to search database. Please try again."})
         return chat_history, ""
 
     context_parts = []
     sources = set()
     for i, (doc, metadata) in enumerate(zip(results["documents"][0], results["metadatas"][0])):
-        context_parts.append(f"[Bagian {i+1} dari {metadata['source']}]\n{doc}")
+        context_parts.append(f"[Section {i+1} from {metadata['source']}]\n{doc}")
         sources.add(metadata["source"])
 
     context = "\n\n---\n\n".join(context_parts)
 
-    system_prompt = """Kamu adalah asisten AI yang membantu menjawab pertanyaan berdasarkan dokumen SOP (Standard Operating Procedure) perusahaan.
+    system_prompt = """You are an AI assistant that helps answer questions based on company SOP (Standard Operating Procedure) documents.
 
-ATURAN:
-1. Jawab HANYA berdasarkan konteks yang diberikan
-2. Jika informasi tidak ada di konteks, katakan "Maaf, saya tidak menemukan informasi tersebut di dokumen SOP yang tersedia."
-3. Jawab dalam Bahasa Indonesia
-4. Berikan jawaban yang jelas dan terstruktur
-5. Sebutkan sumber dokumen jika relevan"""
+RULES:
+1. Answer ONLY based on the provided context
+2. If the information is not in the context, say "Sorry, I could not find that information in the available SOP documents."
+3. Answer in English
+4. Provide clear and well-structured answers
+5. Mention the source document when relevant"""
 
-    user_prompt = f"""Konteks dari dokumen SOP:
+    user_prompt = f"""Context from SOP documents:
 
 {context}
 
 ---
 
-Pertanyaan: {question}
+Question: {question}
 
-Jawab berdasarkan konteks di atas:"""
+Answer based on the context above:"""
 
     try:
         response = deepseek_client.chat.completions.create(
@@ -371,15 +371,15 @@ Jawab berdasarkan konteks di atas:"""
 
         answer = response.choices[0].message.content
         source_list = " · ".join([f"📄 {safe_filename(s)}" for s in sources])
-        full_answer = f"{answer}\n\n---\n🔍 **Sumber:** {source_list}"
+        full_answer = f"{answer}\n\n---\n🔍 **Sources:** {source_list}"
 
     except Exception as e:
         error_msg = str(e)
         # Sanitize: don't expose API keys in error messages
         if "api" in error_msg.lower() or "key" in error_msg.lower() or "auth" in error_msg.lower():
-            full_answer = "❌ Gagal menghubungi AI. Periksa API key di Settings → Secrets."
+            full_answer = "❌ Failed to contact AI. Check API key in Settings → Secrets."
         else:
-            full_answer = f"❌ Terjadi kesalahan: {html.escape(error_msg[:200])}"
+            full_answer = f"❌ An error occurred: {html.escape(error_msg[:200])}"
 
     chat_history.append({"role": "user", "content": question})
     chat_history.append({"role": "assistant", "content": full_answer})
@@ -391,14 +391,14 @@ def get_db_stats():
         col = get_collection()
         count = col.count()
     except Exception:
-        return '<div style="text-align:center;padding:40px;color:#ef4444;">❌ Gagal mengakses database.</div>'
+        return '<div style="text-align:center;padding:40px;color:#ef4444;">❌ Failed to access database.</div>'
 
     if count == 0:
         return """
 <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
     <div style="font-size: 48px; margin-bottom: 16px;">📭</div>
-    <h3 style="margin: 0 0 8px 0; color: #475569;">Database Kosong</h3>
-    <p style="margin: 0;">Upload dokumen SOP di tab <strong>📤 Upload Dokumen</strong> untuk memulai.</p>
+    <h3 style="margin: 0 0 8px 0; color: #475569;">Database Empty</h3>
+    <p style="margin: 0;">Upload SOP documents in the <strong>📤 Upload Documents</strong> tab to get started.</p>
 </div>
 """
 
@@ -423,11 +423,11 @@ def get_db_stats():
     </div>
     <div style="background: linear-gradient(135deg, #0e7a6d, #10b981); border-radius: 16px; padding: 24px; color: white; box-shadow: 0 4px 16px rgba(14,122,109,0.3);">
         <div style="font-size: 36px; font-weight: 800;">{len(sources)}</div>
-        <div style="font-size: 14px; opacity: 0.85;">Dokumen Tersimpan</div>
+        <div style="font-size: 14px; opacity: 0.85;">Documents Stored</div>
     </div>
 </div>
 <div>
-    <h4 style="margin: 0 0 12px 0; color: #1e293b;">📚 Daftar Dokumen</h4>
+    <h4 style="margin: 0 0 12px 0; color: #1e293b;">📚 Document List</h4>
     {doc_list}
 </div>
 """
@@ -446,8 +446,8 @@ def clear_database():
     return """
 <div style="text-align: center; padding: 40px; background: #fef2f2; border-radius: 16px; border: 1px solid #fecaca;">
     <div style="font-size: 36px; margin-bottom: 12px;">🗑️</div>
-    <h3 style="margin: 0 0 8px 0; color: #dc2626;">Database Dikosongkan</h3>
-    <p style="margin: 0; color: #991b1b; font-size: 14px;">Semua data telah dihapus. Upload dokumen baru untuk memulai kembali.</p>
+    <h3 style="margin: 0 0 8px 0; color: #dc2626;">Database Cleared</h3>
+    <p style="margin: 0; color: #991b1b; font-size: 14px;">All data has been deleted. Upload new documents to start over.</p>
 </div>
 """
 
@@ -770,7 +770,7 @@ footer {
 # ============================================
 
 with gr.Blocks(
-    title="RAG SOP Perusahaan",
+    title="RAG SOP Assistant",
     theme=gr.themes.Base(
         primary_hue=gr.themes.colors.teal,
         secondary_hue=gr.themes.colors.blue,
@@ -791,7 +791,7 @@ with gr.Blocks(
             </div>
             <h1 class="header-title">📋 SOP Assistant</h1>
             <p class="header-subtitle">
-                Tanya jawab cerdas berbasis AI untuk dokumen Standard Operating Procedure perusahaan Anda
+                AI-powered smart Q&A for your company's Standard Operating Procedure documents
             </p>
             <div class="header-stats">
                 <div class="header-stat">
@@ -811,7 +811,7 @@ with gr.Blocks(
     with gr.Tabs() as tabs:
 
         # ======== TAB 1: CHAT ========
-        with gr.TabItem("💬 Tanya Jawab", id="chat"):
+        with gr.TabItem("💬 Q&A Chat", id="chat"):
             chatbot = gr.Chatbot(
                 height=480,
                 type="messages",
@@ -819,14 +819,14 @@ with gr.Blocks(
                 avatar_images=(None, "https://em-content.zobj.net/source/twitter/408/robot_1f916.png"),
                 placeholder="""<div style="text-align: center; padding: 40px 20px; color: #94a3b8;">
                     <div style="font-size: 48px; margin-bottom: 16px;">💬</div>
-                    <h3 style="margin: 0 0 8px 0; color: #475569; font-weight: 700;">Mulai Bertanya</h3>
-                    <p style="margin: 0; font-size: 14px;">Upload dokumen SOP terlebih dahulu, lalu ketik pertanyaan Anda di bawah</p>
+                    <h3 style="margin: 0 0 8px 0; color: #475569; font-weight: 700;">Start Asking</h3>
+                    <p style="margin: 0; font-size: 14px;">Upload SOP documents first, then type your question below</p>
                 </div>""",
             )
 
             with gr.Row():
                 msg = gr.Textbox(
-                    placeholder="Ketik pertanyaan tentang SOP perusahaan...",
+                    placeholder="Type your question about company SOPs...",
                     show_label=False,
                     scale=9,
                     container=False,
@@ -834,23 +834,23 @@ with gr.Blocks(
                     max_lines=3,
                 )
                 send_btn = gr.Button(
-                    "Kirim ➤",
+                    "Send ➤",
                     variant="primary",
                     scale=1,
                     min_width=100,
                 )
 
             gr.Markdown(
-                "<p style='color: #94a3b8; font-size: 12px; margin: 4px 0 8px 0;'>💡 Tekan Enter untuk mengirim · Contoh pertanyaan di bawah</p>"
+                "<p style='color: #94a3b8; font-size: 12px; margin: 4px 0 8px 0;'>💡 Press Enter to send · Example questions below</p>"
             )
 
             gr.Examples(
                 examples=[
-                    ["Bagaimana prosedur pengajuan cuti karyawan?"],
-                    ["Apa saja langkah dalam proses quality control?"],
-                    ["Jelaskan SOP penanganan komplain customer"],
-                    ["Bagaimana prosedur purchasing barang?"],
-                    ["Apa aturan keamanan di area gudang?"],
+                    ["What is the employee leave request procedure?"],
+                    ["What are the steps in the quality control process?"],
+                    ["Explain the SOP for handling customer complaints"],
+                    ["What is the procurement procedure for goods?"],
+                    ["What are the safety rules in the warehouse area?"],
                 ],
                 inputs=msg,
                 label="",
@@ -860,15 +860,15 @@ with gr.Blocks(
             send_btn.click(query_rag, [msg, chatbot], [chatbot, msg])
 
         # ======== TAB 2: UPLOAD ========
-        with gr.TabItem("📤 Upload Dokumen", id="upload"):
+        with gr.TabItem("📤 Upload Documents", id="upload"):
             gr.HTML("""
             <div style="margin-bottom: 20px;">
                 <h2 style="margin: 0 0 8px 0; color: #1e293b; font-weight: 700; font-size: 22px;">
-                    📤 Upload Dokumen SOP
+                    📤 Upload SOP Documents
                 </h2>
                 <p style="margin: 0; color: #64748b; font-size: 14px;">
-                    Upload file PDF, Word (.docx), atau TXT. Sistem akan otomatis memproses,
-                    memecah menjadi chunks, dan menyimpannya ke vector database.
+                    Upload PDF, Word (.docx), or TXT files. The system will automatically process,
+                    split into chunks, and store them in the vector database.
                 </p>
             </div>
             """)
@@ -883,16 +883,16 @@ with gr.Blocks(
                 <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e2e8f0;">
                     <div style="font-size: 24px; margin-bottom: 8px;">✂️</div>
                     <div style="font-size: 12px; font-weight: 600; color: #334155;">2. Chunking</div>
-                    <div style="font-size: 11px; color: #94a3b8;">Pecah teks</div>
+                    <div style="font-size: 11px; color: #94a3b8;">Split text</div>
                 </div>
                 <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e2e8f0;">
                     <div style="font-size: 24px; margin-bottom: 8px;">🧠</div>
                     <div style="font-size: 12px; font-weight: 600; color: #334155;">3. Embedding</div>
-                    <div style="font-size: 11px; color: #94a3b8;">Vektor AI</div>
+                    <div style="font-size: 11px; color: #94a3b8;">AI Vectors</div>
                 </div>
                 <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e2e8f0;">
                     <div style="font-size: 24px; margin-bottom: 8px;">💾</div>
-                    <div style="font-size: 12px; font-weight: 600; color: #334155;">4. Simpan</div>
+                    <div style="font-size: 12px; font-weight: 600; color: #334155;">4. Store</div>
                     <div style="font-size: 11px; color: #94a3b8;">ChromaDB</div>
                 </div>
             </div>
@@ -901,13 +901,13 @@ with gr.Blocks(
             file_upload = gr.File(
                 file_count="multiple",
                 file_types=[".pdf", ".docx", ".txt"],
-                label="Drag & drop file SOP di sini",
+                label="Drag & drop SOP files here",
                 type="filepath",
                 height=180,
             )
 
             upload_btn = gr.Button(
-                "🚀 Proses & Simpan ke Database",
+                "🚀 Process & Store to Database",
                 variant="primary",
                 size="lg",
             )
@@ -920,17 +920,17 @@ with gr.Blocks(
             gr.HTML("""
             <div style="margin-bottom: 20px;">
                 <h2 style="margin: 0 0 8px 0; color: #1e293b; font-weight: 700; font-size: 22px;">
-                    📊 Kelola Database
+                    📊 Manage Database
                 </h2>
                 <p style="margin: 0; color: #64748b; font-size: 14px;">
-                    Lihat statistik dan kelola dokumen yang tersimpan di vector database.
+                    View statistics and manage documents stored in the vector database.
                 </p>
             </div>
             """)
 
             with gr.Row():
-                stats_btn = gr.Button("🔄 Refresh Statistik", variant="secondary", size="lg")
-                clear_btn = gr.Button("🗑️ Kosongkan Database", variant="stop", size="lg")
+                stats_btn = gr.Button("🔄 Refresh Stats", variant="secondary", size="lg")
+                clear_btn = gr.Button("🗑️ Clear Database", variant="stop", size="lg")
 
             db_output = gr.HTML()
             stats_btn.click(get_db_stats, outputs=[db_output])
