@@ -5,6 +5,7 @@ Stack: ChromaDB + Sentence Transformers + DeepSeek API + Gradio
 """
 
 import os
+import html
 import gradio as gr
 import chromadb
 from chromadb.utils import embedding_functions
@@ -12,6 +13,7 @@ from openai import OpenAI
 import hashlib
 from pathlib import Path
 import time
+import threading
 
 # ============================================
 # CONFIGURATION
@@ -22,157 +24,49 @@ EMBEDDING_MODEL = "intfloat/multilingual-e5-small"
 CHUNK_SIZE = 500
 CHUNK_OVERLAP = 100
 TOP_K = 5
+MAX_QUESTION_LENGTH = 1000
+MAX_FILE_SIZE_MB = 50
+DEFAULT_SOP_DIR = "./SOP"
 
 # ============================================
-# INITIALIZE COMPONENTS (lazy loading)
+# INITIALIZE COMPONENTS (thread-safe)
 # ============================================
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
 
+_lock = threading.Lock()
 ef = None
 collection = None
 _model_loaded = False
 
+
 def get_collection():
+    """Thread-safe lazy initialization of collection + embedding function."""
     global ef, collection, _model_loaded
-    if collection is None:
-        ef = embedding_functions.SentenceTransformerEmbeddingFunction(
-            model_name=EMBEDDING_MODEL
-        )
-        collection = chroma_client.get_or_create_collection(
-            name=COLLECTION_NAME,
-            embedding_function=ef,
-            metadata={"hnsw:space": "cosine"}
-        )
-        _model_loaded = True
+    with _lock:
+        if collection is None:
+            ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+                model_name=EMBEDDING_MODEL
+            )
+            collection = chroma_client.get_or_create_collection(
+                name=COLLECTION_NAME,
+                embedding_function=ef,
+                metadata={"hnsw:space": "cosine"}
+            )
+            _model_loaded = True
     return collection
 
-DEFAULT_SOP_DIR = "./SOP"
-
-def preload_and_index_defaults():
-    """Preload embedding model and auto-index default SOP files at startup."""
-    import threading
-    def _load():
-        col = get_collection()
-        print(f"✅ Embedding model '{EMBEDDING_MODEL}' loaded successfully.")
-
-        # Auto-index default SOP files from SOP/ folder
-        sop_dir = Path(DEFAULT_SOP_DIR)
-        if not sop_dir.exists():
-            print("📁 No SOP/ folder found, skipping default indexing.")
-            return
-
-        supported = [".pdf", ".docx", ".txt"]
-        sop_files = [f for f in sop_dir.iterdir() if f.suffix.lower() in supported]
-
-        if not sop_files:
-            print("📁 No SOP files found in SOP/ folder.")
-            return
-
-        # Check which files are already indexed
-        existing_data = col.get(include=["metadatas"])
-        existing_sources = set()
-        if existing_data and existing_data.get("metadatas"):
-            existing_sources = {m.get("source", "") for m in existing_data["metadatas"]}
-
-        new_files = [f for f in sop_files if f.name not in existing_sources]
-
-        if not new_files:
-            print(f"✅ All {len(sop_files)} default SOP files already indexed.")
-            return
-
-        print(f"📄 Indexing {len(new_files)} new default SOP files...")
-
-        for sop_file in new_files:
-            suffix = sop_file.suffix.lower()
-            filename = sop_file.name
-
-            if suffix == ".pdf":
-                text = _extract_pdf(str(sop_file))
-            elif suffix == ".docx":
-                text = _extract_docx(str(sop_file))
-            elif suffix == ".txt":
-                with open(sop_file, "r", encoding="utf-8", errors="ignore") as f:
-                    text = f.read()
-            else:
-                continue
-
-            if not text:
-                print(f"  ⚠️ Skipped {filename} (empty)")
-                continue
-
-            chunks = _chunk(text)
-            if not chunks:
-                continue
-
-            ids = [hashlib.md5(f"{filename}_chunk_{j}".encode()).hexdigest() for j in range(len(chunks))]
-            metadatas = [{"source": filename, "chunk_index": j} for j in range(len(chunks))]
-
-            batch_size = 50
-            for bs in range(0, len(chunks), batch_size):
-                be = min(bs + batch_size, len(chunks))
-                col.upsert(ids=ids[bs:be], documents=chunks[bs:be], metadatas=metadatas[bs:be])
-
-            print(f"  ✅ {filename}: {len(chunks)} chunks indexed")
-
-        print(f"✅ Default SOP indexing complete.")
-
-    t = threading.Thread(target=_load, daemon=True)
-    t.start()
-
-# Helper functions for startup (before main functions are defined)
-def _extract_pdf(file_path):
-    try:
-        import pymupdf
-        doc = pymupdf.open(file_path)
-        text = ""
-        for page in doc:
-            text += page.get_text() + "\n"
-        doc.close()
-        return text.strip()
-    except:
-        return ""
-
-def _extract_docx(file_path):
-    try:
-        import docx
-        doc = docx.Document(file_path)
-        return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
-    except:
-        return ""
-
-def _chunk(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
-    if not text:
-        return []
-    chunks = []
-    start = 0
-    while start < len(text):
-        end = start + chunk_size
-        chunk = text[start:end]
-        if chunk.strip():
-            chunks.append(chunk.strip())
-        start = end - overlap
-    return chunks
-
-preload_and_index_defaults()
-
-deepseek_client = OpenAI(
-    api_key=DEEPSEEK_API_KEY,
-    base_url="https://api.deepseek.com"
-)
 
 # ============================================
-# DOCUMENT PROCESSING
+# DOCUMENT PROCESSING (single source of truth)
 # ============================================
 
 def extract_text_from_pdf(file_path):
     try:
         import pymupdf
         doc = pymupdf.open(file_path)
-        text = ""
-        for page in doc:
-            text += page.get_text() + "\n"
+        pages = [page.get_text() for page in doc]
         doc.close()
-        return text.strip()
+        return "\n".join(pages).strip()
     except Exception as e:
         print(f"Error reading PDF {file_path}: {e}")
         return ""
@@ -189,17 +83,38 @@ def extract_text_from_docx(file_path):
         return ""
 
 
+def extract_text(file_path):
+    """Unified text extraction based on file extension."""
+    suffix = Path(file_path).suffix.lower()
+    if suffix == ".pdf":
+        return extract_text_from_pdf(file_path)
+    elif suffix == ".docx":
+        return extract_text_from_docx(file_path)
+    elif suffix == ".txt":
+        with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+            return f.read()
+    return ""
+
+
 def chunk_text(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    """Split text into chunks, trying to break at sentence boundaries."""
     if not text:
         return []
     chunks = []
     start = 0
     while start < len(text):
         end = start + chunk_size
-        chunk = text[start:end]
-        if chunk.strip():
-            chunks.append(chunk.strip())
-        start = end - overlap
+        if end < len(text):
+            # Try to break at sentence boundary (. ! ? \n)
+            for sep in ['. ', '.\n', '! ', '?\n', '? ', '\n\n', '\n']:
+                last_sep = text[start:end].rfind(sep)
+                if last_sep > chunk_size * 0.3:
+                    end = start + last_sep + len(sep)
+                    break
+        chunk = text[start:end].strip()
+        if chunk:
+            chunks.append(chunk)
+        start = end - overlap if end < len(text) else end
     return chunks
 
 
@@ -207,6 +122,87 @@ def generate_chunk_id(filename, chunk_index):
     raw = f"{filename}_chunk_{chunk_index}"
     return hashlib.md5(raw.encode()).hexdigest()
 
+
+def safe_filename(name):
+    """Escape filename for safe HTML rendering (XSS prevention)."""
+    return html.escape(str(name))
+
+
+# ============================================
+# AUTO-INDEX DEFAULT SOP FILES
+# ============================================
+
+def preload_and_index_defaults():
+    """Preload embedding model and auto-index default SOP files at startup."""
+    def _load():
+        try:
+            col = get_collection()
+            print(f"✅ Embedding model '{EMBEDDING_MODEL}' loaded successfully.")
+
+            sop_dir = Path(DEFAULT_SOP_DIR)
+            if not sop_dir.exists():
+                print("📁 No SOP/ folder found, skipping default indexing.")
+                return
+
+            supported = [".pdf", ".docx", ".txt"]
+            sop_files = [f for f in sop_dir.iterdir() if f.suffix.lower() in supported]
+            if not sop_files:
+                print("📁 No SOP files found in SOP/ folder.")
+                return
+
+            existing_data = col.get(include=["metadatas"])
+            existing_sources = set()
+            if existing_data and existing_data.get("metadatas"):
+                existing_sources = {m.get("source", "") for m in existing_data["metadatas"]}
+
+            new_files = [f for f in sop_files if f.name not in existing_sources]
+            if not new_files:
+                print(f"✅ All {len(sop_files)} default SOP files already indexed.")
+                return
+
+            print(f"📄 Indexing {len(new_files)} new default SOP files...")
+
+            for sop_file in new_files:
+                filename = sop_file.name
+                text = extract_text(str(sop_file))
+
+                if not text:
+                    print(f"  ⚠️ Skipped {filename} (empty)")
+                    continue
+
+                chunks = chunk_text(text)
+                if not chunks:
+                    continue
+
+                ids = [generate_chunk_id(filename, j) for j in range(len(chunks))]
+                metadatas = [{"source": filename, "chunk_index": j} for j in range(len(chunks))]
+
+                batch_size = 50
+                for bs in range(0, len(chunks), batch_size):
+                    be = min(bs + batch_size, len(chunks))
+                    col.upsert(ids=ids[bs:be], documents=chunks[bs:be], metadatas=metadatas[bs:be])
+
+                print(f"  ✅ {filename}: {len(chunks)} chunks indexed")
+
+            print("✅ Default SOP indexing complete.")
+        except Exception as e:
+            print(f"❌ Error during preload: {e}")
+
+    t = threading.Thread(target=_load, daemon=True)
+    t.start()
+
+
+preload_and_index_defaults()
+
+deepseek_client = OpenAI(
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com"
+)
+
+
+# ============================================
+# UPLOAD HANDLER
+# ============================================
 
 def process_and_store(files, progress=gr.Progress()):
     if not files:
@@ -220,44 +216,45 @@ def process_and_store(files, progress=gr.Progress()):
         progress(0, desc="⏳ Loading embedding model (first time)...")
         get_collection()
 
+    col = get_collection()
     progress(0, desc="Memulai proses...")
 
     for i, file in enumerate(files):
         file_path = file.name if hasattr(file, 'name') else str(file)
         filename = Path(file_path).name
-        suffix = Path(file_path).suffix.lower()
+        safe_name = safe_filename(filename)
 
-        progress((i) / len(files), desc=f"📄 Membaca {filename}...")
-
-        if suffix == ".pdf":
-            text = extract_text_from_pdf(file_path)
-        elif suffix == ".docx":
-            text = extract_text_from_docx(file_path)
-        elif suffix == ".txt":
-            with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
-                text = f.read()
-        else:
-            skipped_files.append(filename)
+        # File size check
+        try:
+            file_size_mb = Path(file_path).stat().st_size / (1024 * 1024)
+            if file_size_mb > MAX_FILE_SIZE_MB:
+                skipped_files.append(f"{safe_name} (>{MAX_FILE_SIZE_MB}MB)")
+                continue
+        except OSError:
+            skipped_files.append(safe_name)
             continue
 
+        progress(i / max(len(files), 1), desc=f"📄 Membaca {safe_name}...")
+
+        text = extract_text(file_path)
         if not text:
-            skipped_files.append(filename)
+            skipped_files.append(safe_name)
             continue
 
         chunks = chunk_text(text)
         if not chunks:
-            skipped_files.append(filename)
+            skipped_files.append(safe_name)
             continue
 
         ids = [generate_chunk_id(filename, j) for j in range(len(chunks))]
         metadatas = [{"source": filename, "chunk_index": j} for j in range(len(chunks))]
 
-        progress((i + 0.5) / len(files), desc=f"🧠 Embedding {filename} ({len(chunks)} chunks)...")
+        progress((i + 0.5) / max(len(files), 1), desc=f"🧠 Embedding {safe_name} ({len(chunks)} chunks)...")
 
         batch_size = 50
         for batch_start in range(0, len(chunks), batch_size):
             batch_end = min(batch_start + batch_size, len(chunks))
-            get_collection().upsert(
+            col.upsert(
                 ids=ids[batch_start:batch_end],
                 documents=chunks[batch_start:batch_end],
                 metadatas=metadatas[batch_start:batch_end]
@@ -279,7 +276,7 @@ def process_and_store(files, progress=gr.Progress()):
             <div style="font-size: 13px; color: #64748b;">Chunks Dibuat</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-            <div style="font-size: 28px; font-weight: 700; color: #6366f1;">{get_collection().count()}</div>
+            <div style="font-size: 28px; font-weight: 700; color: #6366f1;">{col.count()}</div>
             <div style="font-size: 13px; color: #64748b;">Total di Database</div>
         </div>
     </div>
@@ -296,14 +293,20 @@ def process_and_store(files, progress=gr.Progress()):
 # ============================================
 
 def query_rag(question, chat_history):
-    if not question.strip():
+    if not question or not question.strip():
         return chat_history, ""
 
-    if get_collection().count() == 0:
-        chat_history.append({
-            "role": "user",
-            "content": question
-        })
+    question = question.strip()[:MAX_QUESTION_LENGTH]
+
+    try:
+        col = get_collection()
+    except Exception:
+        chat_history.append({"role": "user", "content": question})
+        chat_history.append({"role": "assistant", "content": "❌ Gagal mengakses database. Coba refresh halaman."})
+        return chat_history, ""
+
+    if col.count() == 0:
+        chat_history.append({"role": "user", "content": question})
         chat_history.append({
             "role": "assistant",
             "content": "⚠️ Database masih kosong. Silakan upload dokumen SOP terlebih dahulu di tab **📤 Upload Dokumen**."
@@ -311,21 +314,22 @@ def query_rag(question, chat_history):
         return chat_history, ""
 
     if not DEEPSEEK_API_KEY:
-        chat_history.append({
-            "role": "user",
-            "content": question
-        })
+        chat_history.append({"role": "user", "content": question})
         chat_history.append({
             "role": "assistant",
             "content": "⚠️ DeepSeek API key belum diset. Tambahkan `DEEPSEEK_API_KEY` di Settings → Secrets pada HF Space."
         })
         return chat_history, ""
 
-    # Retrieve relevant chunks
-    results = get_collection().query(
-        query_texts=[question],
-        n_results=TOP_K
-    )
+    try:
+        results = col.query(
+            query_texts=[question],
+            n_results=min(TOP_K, col.count())
+        )
+    except Exception:
+        chat_history.append({"role": "user", "content": question})
+        chat_history.append({"role": "assistant", "content": "❌ Gagal mencari di database. Coba lagi."})
+        return chat_history, ""
 
     context_parts = []
     sources = set()
@@ -366,11 +370,16 @@ Jawab berdasarkan konteks di atas:"""
         )
 
         answer = response.choices[0].message.content
-        source_list = " · ".join([f"📄 {s}" for s in sources])
+        source_list = " · ".join([f"📄 {safe_filename(s)}" for s in sources])
         full_answer = f"{answer}\n\n---\n🔍 **Sumber:** {source_list}"
 
     except Exception as e:
-        full_answer = f"❌ Error: {str(e)}"
+        error_msg = str(e)
+        # Sanitize: don't expose API keys in error messages
+        if "api" in error_msg.lower() or "key" in error_msg.lower() or "auth" in error_msg.lower():
+            full_answer = "❌ Gagal menghubungi AI. Periksa API key di Settings → Secrets."
+        else:
+            full_answer = f"❌ Terjadi kesalahan: {html.escape(error_msg[:200])}"
 
     chat_history.append({"role": "user", "content": question})
     chat_history.append({"role": "assistant", "content": full_answer})
@@ -378,7 +387,12 @@ Jawab berdasarkan konteks di atas:"""
 
 
 def get_db_stats():
-    count = get_collection().count()
+    try:
+        col = get_collection()
+        count = col.count()
+    except Exception:
+        return '<div style="text-align:center;padding:40px;color:#ef4444;">❌ Gagal mengakses database.</div>'
+
     if count == 0:
         return """
 <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
@@ -388,7 +402,7 @@ def get_db_stats():
 </div>
 """
 
-    all_data = get_collection().get(include=["metadatas"])
+    all_data = col.get(include=["metadatas"])
     sources = set()
     for meta in all_data["metadatas"]:
         sources.add(meta.get("source", "unknown"))
@@ -396,7 +410,7 @@ def get_db_stats():
     doc_list = "".join([
         f'<div style="display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 8px; margin-bottom: 6px; border: 1px solid #e2e8f0;">'
         f'<span style="color: #6366f1;">📄</span>'
-        f'<span style="font-size: 13px; color: #334155;">{s}</span>'
+        f'<span style="font-size: 13px; color: #334155;">{safe_filename(s)}</span>'
         f'</div>'
         for s in sorted(sources)
     ])
@@ -420,10 +434,15 @@ def get_db_stats():
 
 
 def clear_database():
-    global collection, ef
-    chroma_client.delete_collection(COLLECTION_NAME)
-    collection = None
-    ef = None
+    global collection, ef, _model_loaded
+    with _lock:
+        try:
+            chroma_client.delete_collection(COLLECTION_NAME)
+        except Exception:
+            pass
+        collection = None
+        ef = None
+        _model_loaded = False
     return """
 <div style="text-align: center; padding: 40px; background: #fef2f2; border-radius: 16px; border: 1px solid #fecaca;">
     <div style="font-size: 36px; margin-bottom: 12px;">🗑️</div>
@@ -854,7 +873,6 @@ with gr.Blocks(
             </div>
             """)
 
-            # How it works
             gr.HTML("""
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 24px;">
                 <div style="background: white; border-radius: 12px; padding: 16px; text-align: center; border: 1px solid #e2e8f0;">
