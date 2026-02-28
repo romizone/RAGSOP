@@ -11,7 +11,7 @@ pinned: true
 
 <div align="center">
 
-# 📋 RAG SOP Perusahaan
+# 📋 RAG SOP Assistant
 
 ### *Intelligent Q&A System for Corporate Standard Operating Procedures*
 
@@ -24,43 +24,43 @@ pinned: true
 
 <img src="https://em-content.zobj.net/source/twitter/408/robot_1f916.png" width="80"/>
 
-**Sistem tanya jawab cerdas berbasis AI** yang memungkinkan karyawan bertanya tentang prosedur perusahaan secara natural dan mendapat jawaban akurat langsung dari dokumen SOP resmi.
+**An AI-powered smart Q&A system** that enables employees to ask questions about company procedures in natural language and receive accurate answers directly from official SOP documents.
 
-[🚀 Coba Live Demo](https://huggingface.co/spaces/romizone/RAG-SOP) · [📖 Dokumentasi](#-cara-kerja) · [🐛 Report Bug](https://github.com/romizone/RAGSOP/issues)
+[🚀 Try Live Demo](https://huggingface.co/spaces/romizone/RAG-SOP) · [📖 Documentation](#-how-it-works) · [🐛 Report Bug](https://github.com/romizone/RAGSOP/issues)
 
 </div>
 
 ---
 
-## 🎯 Tentang Proyek
+## 🎯 About
 
-**RAG SOP Perusahaan** adalah solusi enterprise-ready yang menggabungkan teknologi **Retrieval-Augmented Generation (RAG)** dengan **Large Language Model (LLM)** untuk menjadikan dokumen SOP perusahaan sebagai sumber pengetahuan yang mudah diakses.
+**RAG SOP Assistant** is an enterprise-ready solution that combines **Retrieval-Augmented Generation (RAG)** with a **Large Language Model (LLM)** to turn corporate SOP documents into an easily accessible knowledge base.
 
-### 💡 Mengapa Ini Dibutuhkan?
+### 💡 Why This Matters
 
-| Masalah | Solusi |
-|---------|--------|
-| 📚 Dokumen SOP bertumpuk dan sulit dicari | 🔍 Pencarian semantik berbasis AI |
-| ⏰ Karyawan baru butuh waktu lama memahami prosedur | 💬 Tanya jawab natural seperti chat |
-| 🔄 Informasi tersebar di banyak file | 📊 Database terpusat dengan vector search |
-| 📞 HR/Admin sering menjawab pertanyaan berulang | 🤖 Asisten AI yang selalu tersedia 24/7 |
+| Problem | Solution |
+|---------|----------|
+| 📚 SOP documents are scattered and hard to find | 🔍 AI-powered semantic search |
+| ⏰ New employees need a long time to learn procedures | 💬 Natural language Q&A like chatting |
+| 🔄 Information is spread across many files | 📊 Centralized database with vector search |
+| 📞 HR/Admin repeatedly answering the same questions | 🤖 AI assistant available 24/7 |
 
-### ✨ Fitur Utama
+### ✨ Key Features
 
-| Fitur | Deskripsi |
-|-------|-----------|
-| 💬 **Chat AI** | Tanya jawab natural tentang SOP perusahaan |
-| 📤 **Multi-Format Upload** | Mendukung PDF, Word (.docx), dan TXT |
-| 🧠 **Semantic Search** | Pencarian berbasis makna, bukan sekadar kata kunci |
-| 📊 **Database Management** | Lihat statistik, daftar dokumen, clear database |
-| 🔒 **Thread-Safe** | Aman untuk concurrent access |
-| 🛡️ **XSS Protected** | Input & output ter-sanitasi |
-| 📄 **Auto-Index** | Dokumen default otomatis ter-index saat startup |
-| 🎨 **Premium UI** | Antarmuka modern dengan custom CSS |
+| Feature | Description |
+|---------|-------------|
+| 💬 **AI Chat** | Natural language Q&A about company SOPs |
+| 📤 **Multi-Format Upload** | Supports PDF, Word (.docx), and TXT |
+| 🧠 **Semantic Search** | Meaning-based retrieval, not just keyword matching |
+| 📊 **Database Management** | View stats, document list, and clear database |
+| 🔒 **Thread-Safe** | Safe for concurrent access |
+| 🛡️ **XSS Protected** | All inputs & outputs are sanitized |
+| 📄 **Auto-Index** | Default SOP documents are automatically indexed at startup |
+| 🎨 **Premium UI** | Modern interface with custom CSS design |
 
 ---
 
-## 🏗️ Arsitektur & Tech Stack
+## 🏗️ Architecture & Tech Stack
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -101,11 +101,11 @@ pinned: true
 | Layer | Technology | Purpose |
 |-------|-----------|---------|
 | 🎨 **Frontend** | Gradio 5.9.1 | UI Framework + Custom CSS |
-| 🧠 **LLM** | DeepSeek-V3 | Generasi jawaban bahasa Indonesia |
-| 🔮 **Embedding** | intfloat/multilingual-e5-small | Vektor representasi teks multilingual |
-| 💾 **Vector DB** | ChromaDB | Penyimpanan & pencarian vektor |
-| 📄 **PDF Parser** | PyMuPDF | Ekstraksi teks dari PDF |
-| 📝 **DOCX Parser** | python-docx | Ekstraksi teks dari Word |
+| 🧠 **LLM** | DeepSeek-V3 | Indonesian language answer generation |
+| 🔮 **Embedding** | intfloat/multilingual-e5-small | Multilingual text vector representation |
+| 💾 **Vector DB** | ChromaDB | Vector storage & similarity search |
+| 📄 **PDF Parser** | PyMuPDF | Text extraction from PDF files |
+| 📝 **DOCX Parser** | python-docx | Text extraction from Word documents |
 
 ---
 
@@ -113,77 +113,77 @@ pinned: true
 
 ### Option 1: Hugging Face Spaces (Recommended)
 
-> **Zero setup!** Langsung pakai di cloud.
+> **Zero setup!** Run it instantly in the cloud.
 
-1. **Fork** Space ini ke akun HF kamu
-2. Tambahkan Secret: `DEEPSEEK_API_KEY` di Settings
-3. Tunggu build selesai (~3-5 menit)
-4. Upload dokumen SOP dan mulai bertanya!
+1. **Fork** this Space to your HF account
+2. Add Secret: `DEEPSEEK_API_KEY` in Settings
+3. Wait for the build to complete (~3-5 minutes)
+4. Upload SOP documents and start asking questions!
 
 ### Option 2: Local Development
 
 ```bash
-# 1. Clone repository
+# 1. Clone the repository
 git clone https://github.com/romizone/RAGSOP.git
 cd RAGSOP
 
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Set API key
+# 3. Set your API key
 export DEEPSEEK_API_KEY="your-api-key-here"
 
-# 4. Run
+# 4. Run the application
 python app.py
 ```
 
-Buka `http://localhost:7860` di browser.
+Open `http://localhost:7860` in your browser.
 
 ---
 
-## 📖 Cara Kerja
+## 📖 How It Works
 
 ### 1️⃣ Upload & Chunking
 ```
-📄 Dokumen SOP  →  ✂️ Sentence-Boundary Chunking  →  500 char chunks
+📄 SOP Document  →  ✂️ Sentence-Boundary Chunking  →  ~500 char chunks
 ```
-File PDF/DOCX/TXT dipecah menjadi potongan teks ~500 karakter dengan pemotongan di batas kalimat (bukan di tengah kata).
+PDF/DOCX/TXT files are split into ~500 character text chunks with intelligent sentence-boundary splitting (never cuts mid-word).
 
 ### 2️⃣ Embedding & Storage
 ```
 📝 Text Chunks  →  🔮 E5-Small Embedding  →  💾 ChromaDB (Cosine Similarity)
 ```
-Setiap chunk dikonversi menjadi vektor 384-dimensi dan disimpan di ChromaDB.
+Each chunk is converted into a 384-dimensional vector and stored in ChromaDB for fast similarity search.
 
 ### 3️⃣ Query & Retrieval
 ```
-❓ Pertanyaan  →  🔍 Semantic Search (Top 5)  →  🧠 DeepSeek V3  →  💬 Jawaban
+❓ Question  →  🔍 Semantic Search (Top 5)  →  🧠 DeepSeek V3  →  💬 Answer
 ```
-Pertanyaan dicocokkan dengan chunk paling relevan, lalu LLM menghasilkan jawaban berdasarkan konteks.
+The user's question is matched against the most relevant chunks, then the LLM generates an accurate answer based on the retrieved context.
 
 ---
 
 ## 🔒 Security
 
-| Fitur | Implementasi |
-|-------|-------------|
-| 🛡️ XSS Prevention | Semua input/output di-escape via `html.escape()` |
-| 🔐 API Key Protection | Disimpan sebagai environment variable (HF Secrets) |
-| 🚫 Error Sanitization | Error messages tidak mengekspos informasi sensitif |
-| 📏 Input Validation | Pertanyaan max 1000 karakter, file max 50MB |
-| 🔒 Thread Safety | `threading.Lock` untuk concurrent access |
+| Feature | Implementation |
+|---------|---------------|
+| 🛡️ XSS Prevention | All inputs/outputs escaped via `html.escape()` |
+| 🔐 API Key Protection | Stored as environment variable (HF Secrets) |
+| 🚫 Error Sanitization | Error messages never expose sensitive information |
+| 📏 Input Validation | Questions capped at 1000 chars, files capped at 50MB |
+| 🔒 Thread Safety | `threading.Lock` for safe concurrent access |
 
 ---
 
-## 📁 Struktur Proyek
+## 📁 Project Structure
 
 ```
 RAGSOP/
-├── 📄 app.py              # Aplikasi utama (Gradio + RAG pipeline)
+├── 📄 app.py              # Main application (Gradio + RAG pipeline)
 ├── 📋 requirements.txt    # Python dependencies
-├── 📖 README.md           # Dokumentasi (file ini)
+├── 📖 README.md           # Documentation (this file)
 ├── 🚫 .gitignore          # Git ignore rules
-└── 📂 SOP/                # Dokumen SOP default (auto-indexed)
+└── 📂 SOP/                # Default SOP documents (auto-indexed)
     ├── Kumpulan_SOP_Perusahaan.pdf
     ├── Pelatihan staf_8.pdf
     ├── Penggunaan teknologi_7.pdf
@@ -197,10 +197,10 @@ RAGSOP/
 
 | Metric | Value |
 |--------|-------|
-| ⏱️ Startup Time | ~30-60s (termasuk model loading) |
-| 📄 Default SOP Files | 5 dokumen, ~256 chunks |
+| ⏱️ Startup Time | ~30-60s (includes model loading) |
+| 📄 Default SOP Files | 5 documents, ~256 chunks |
 | 🔮 Embedding Model Size | ~470MB |
-| 💬 Query Response Time | ~3-5s per pertanyaan |
+| 💬 Query Response Time | ~3-5s per question |
 | 💾 Hardware | CPU Basic (2 vCPU, 16GB RAM) |
 
 ---
@@ -208,16 +208,16 @@ RAGSOP/
 ## 🗺️ Roadmap
 
 - [x] ~~v1.0 — Core RAG + Premium UI + Auto-indexing~~
-- [ ] v1.1 — Persistent storage (data survive restart)
+- [ ] v1.1 — Persistent storage (data survives restart)
 - [ ] v1.2 — Multi-language support (EN/ID)
 - [ ] v1.3 — Document version tracking
-- [ ] v2.0 — Authentication + multi-tenant
+- [ ] v2.0 — Authentication + multi-tenant support
 
 ---
 
 ## 🤝 Contributing
 
-Contributions welcome! Silakan buka [Issue](https://github.com/romizone/RAGSOP/issues) atau kirim Pull Request.
+Contributions are welcome! Feel free to open an [Issue](https://github.com/romizone/RAGSOP/issues) or submit a Pull Request.
 
 ---
 
