@@ -99,7 +99,7 @@ def generate_chunk_id(filename, chunk_index):
 
 def process_and_store(files, progress=gr.Progress()):
     if not files:
-        return "❌ Tidak ada file yang diupload."
+        return "❌ Tidak ada file yang diupload.", None
 
     total_chunks = 0
     processed_files = 0
@@ -171,7 +171,7 @@ def process_and_store(files, progress=gr.Progress()):
     if skipped_files:
         result += f'\n<p style="color: #f59e0b; font-size: 13px; margin-top: 12px;">⚠️ Dilewati: {", ".join(skipped_files[:10])}</p>'
 
-    return result
+    return result, None
 
 
 # ============================================
@@ -778,7 +778,7 @@ with gr.Blocks(
             )
 
             upload_output = gr.HTML(label="Status")
-            upload_btn.click(process_and_store, inputs=[file_upload], outputs=[upload_output])
+            upload_btn.click(process_and_store, inputs=[file_upload], outputs=[upload_output, file_upload])
 
         # ======== TAB 3: DATABASE ========
         with gr.TabItem("📊 Database", id="database"):
