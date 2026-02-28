@@ -46,16 +46,114 @@ def get_collection():
         _model_loaded = True
     return collection
 
-def preload_model():
-    """Preload embedding model in background thread at startup."""
+DEFAULT_SOP_DIR = "./SOP"
+
+def preload_and_index_defaults():
+    """Preload embedding model and auto-index default SOP files at startup."""
     import threading
     def _load():
-        get_collection()
+        col = get_collection()
         print(f"✅ Embedding model '{EMBEDDING_MODEL}' loaded successfully.")
+
+        # Auto-index default SOP files from SOP/ folder
+        sop_dir = Path(DEFAULT_SOP_DIR)
+        if not sop_dir.exists():
+            print("📁 No SOP/ folder found, skipping default indexing.")
+            return
+
+        supported = [".pdf", ".docx", ".txt"]
+        sop_files = [f for f in sop_dir.iterdir() if f.suffix.lower() in supported]
+
+        if not sop_files:
+            print("📁 No SOP files found in SOP/ folder.")
+            return
+
+        # Check which files are already indexed
+        existing_data = col.get(include=["metadatas"])
+        existing_sources = set()
+        if existing_data and existing_data.get("metadatas"):
+            existing_sources = {m.get("source", "") for m in existing_data["metadatas"]}
+
+        new_files = [f for f in sop_files if f.name not in existing_sources]
+
+        if not new_files:
+            print(f"✅ All {len(sop_files)} default SOP files already indexed.")
+            return
+
+        print(f"📄 Indexing {len(new_files)} new default SOP files...")
+
+        for sop_file in new_files:
+            suffix = sop_file.suffix.lower()
+            filename = sop_file.name
+
+            if suffix == ".pdf":
+                text = _extract_pdf(str(sop_file))
+            elif suffix == ".docx":
+                text = _extract_docx(str(sop_file))
+            elif suffix == ".txt":
+                with open(sop_file, "r", encoding="utf-8", errors="ignore") as f:
+                    text = f.read()
+            else:
+                continue
+
+            if not text:
+                print(f"  ⚠️ Skipped {filename} (empty)")
+                continue
+
+            chunks = _chunk(text)
+            if not chunks:
+                continue
+
+            ids = [hashlib.md5(f"{filename}_chunk_{j}".encode()).hexdigest() for j in range(len(chunks))]
+            metadatas = [{"source": filename, "chunk_index": j} for j in range(len(chunks))]
+
+            batch_size = 50
+            for bs in range(0, len(chunks), batch_size):
+                be = min(bs + batch_size, len(chunks))
+                col.upsert(ids=ids[bs:be], documents=chunks[bs:be], metadatas=metadatas[bs:be])
+
+            print(f"  ✅ {filename}: {len(chunks)} chunks indexed")
+
+        print(f"✅ Default SOP indexing complete.")
+
     t = threading.Thread(target=_load, daemon=True)
     t.start()
 
-preload_model()
+# Helper functions for startup (before main functions are defined)
+def _extract_pdf(file_path):
+    try:
+        import pymupdf
+        doc = pymupdf.open(file_path)
+        text = ""
+        for page in doc:
+            text += page.get_text() + "\n"
+        doc.close()
+        return text.strip()
+    except:
+        return ""
+
+def _extract_docx(file_path):
+    try:
+        import docx
+        doc = docx.Document(file_path)
+        return "\n".join([p.text for p in doc.paragraphs if p.text.strip()])
+    except:
+        return ""
+
+def _chunk(text, chunk_size=CHUNK_SIZE, overlap=CHUNK_OVERLAP):
+    if not text:
+        return []
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        chunk = text[start:end]
+        if chunk.strip():
+            chunks.append(chunk.strip())
+        start = end - overlap
+    return chunks
+
+preload_and_index_defaults()
 
 deepseek_client = OpenAI(
     api_key=DEEPSEEK_API_KEY,
